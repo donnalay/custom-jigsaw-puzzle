@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jigsaw Puzzle</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #1a1612;
+      --surface: #252018;
+      --card: #2e2820;
+      --border: #3d3528;
+      --gold: #c9a84c;
+      --gold-light: #e8c97a;
+      --gold-dim: #8a6f32;
+      --text: #e8dcc8;
+      --text-dim: #8a7d68;
+      --correct: #6aaa6a;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201, 168, 76, 0.08) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255, 255, 255, 0.012) 40px, rgba(255, 255, 255, 0.012) 41px),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255, 255, 255, 0.012) 40px, rgba(255, 255, 255, 0.012) 41px);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 700;
+      color: var(--gold-light);
+      text-shadow: 0 0 40px rgba(201, 168, 76, 0.3);
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ── Setup ── */
+    #setup-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .field-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-bottom: 10px;
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--gold-dim);
+      background: rgba(201, 168, 76, 0.04);
+    }
+
+    .upload-zone.has-image {
+      border-style: solid;
+      border-color: var(--gold-dim);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .upload-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-zone img {
+      display: block;
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    .upload-placeholder {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .upload-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+
+    .piece-count-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .piece-count-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      padding: 7px 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      letter-spacing: 0.03em;
+    }
+
+    .piece-count-btn:hover {
+      border-color: var(--gold-dim);
+      color: var(--text);
+    }
+
+    .piece-count-btn.active {
+      background: rgba(201, 168, 76, 0.12);
+      border-color: var(--gold);
+      color: var(--gold-light);
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(201, 168, 76, 0.2);
+    }
+
+    .btn-primary:hover {
+      background: var(--gold-light);
+      box-shadow: 0 6px 28px rgba(201, 168, 76, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Game Panel ── */
+    #game-panel {
+      display: block;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── Bottom Toolbar ── */
+    .game-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      justify-content: space-between;
+      width: 100%;
+      flex-shrink: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 0 16px;
+      height: 56px;
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+      z-index: 50;
+      position: relative;
+    }
+
+    .toolbar-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stat-block {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .stat-block .stat-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .stat-block .stat-value {
+      font-size: 0.9rem;
+      color: var(--gold-light);
+      line-height: 1;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .toolbar-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .toolbar-title-main {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold-light);
+      text-shadow: 0 0 20px rgba(201, 168, 76, 0.25);
+      line-height: 1;
+    }
+
+    .toolbar-title-sub {
+      font-size: 0.55rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .btn-small {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-small:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    #preview-img {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      object-fit: cover;
+      opacity: 0.7;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    #preview-img:hover {
+      opacity: 1;
+    }
+
+    /* ── Scatter Viewport (fills all space above toolbar) ── */
+    #scatter-viewport {
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: var(--surface);
+    }
+
+    #scatter-viewport.panning {
+      cursor: grabbing;
+    }
+
+    #scatter-viewport::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 70% at 50% 50%, rgba(201, 168, 76, 0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* The actual infinite canvas that gets transformed */
+    #scatter-surface {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    /* Zoom controls */
+    .zoom-controls {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 100;
+    }
+
+    .zoom-btn {
+      width: 30px;
+      height: 30px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .zoom-btn:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    .zoom-level {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+
+    /* Board centered inside the surface */
+
+    /* ── Scatter Groups ── */
+    .scatter-group {
+      position: absolute;
+      cursor: grab;
+      z-index: 5;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scatter-group:hover {
+      filter: brightness(1.05);
+    }
+
+    /* ── Scattered Pieces ── */
+    .scatter-piece {
+      position: absolute;
+      cursor: grab;
+      z-index: 5;
+      transition: filter 0.12s;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scatter-piece canvas {
+      display: block;
+      pointer-events: none;
+    }
+
+    .scatter-piece:hover canvas {
+      filter: brightness(1.1) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55));
+    }
+
+    .scatter-piece.dragging {
+      cursor: grabbing;
+      z-index: 50;
+      transition: none;
+      pointer-events: none;
+    }
+
+    .scatter-piece.dragging canvas {
+      filter: brightness(1.2) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 12px rgba(201, 168, 76, 0.6));
+    }
+
+    /* ── Pile Labels ── */
+    .pile-label {
+      position: absolute;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      background: rgba(26, 22, 18, 0.75);
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 4;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    /* ── Win Overlay ── */
+    #win-overlay {
+      display: none;
+      margin: 1rem;
+    }
+
+    #win-overlay.show {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .win-card {
+      display: flex;
+      height: -webkit-fill-available;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--gold-dim);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      box-shadow: 0 0 80px rgba(201, 168, 76, 0.15);
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from {
+        transform: scale(0.7);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .win-card h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem;
+      color: var(--gold-light);
+      margin-bottom: 10px;
+    }
+
+    .win-card p {
+      color: var(--text-dim);
+    }
+
+    .win-stats {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    /* ── Toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .toggle-row .toggle-label {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .toggle-row .toggle-label span {
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+
+    .toggle-row .toggle-label small {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .toggle-switch input:checked+.toggle-track {
+      background: var(--gold-dim);
+    }
+
+    .toggle-switch input:checked+.toggle-track::after {
+      transform: translateX(20px);
+      background: var(--gold);
+    }
+
+    .confetti-piece {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      top: -10px;
+      animation: confettiFall linear forwards;
+      z-index: 101;
+      border-radius: 2px;
+    }
+
+    @keyframes wrongPiece {
+      0% {
+        transform: translateX(0);
+      }
+
+      20% {
+        transform: translateX(-10px);
+      }
+
+      40% {
+        transform: translateX(10px);
+      }
+
+      60% {
+        transform: translateX(-7px);
+      }
+
+      80% {
+        transform: translateX(7px);
+      }
+
+      100% {
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes confettiFall {
+      to {
+        transform: translateY(110vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="game-panel">
+    <div id="scatter-viewport">
+      <div id="win-overlay">
+        <div class="win-card">
+          <p>You solved it!</p>
+          <!-- <div class="win-stats" id="win-stats"></div> -->
+          <button class="btn-primary" id="win-new-btn">Play Again</button>
+        </div>
+      </div>
+      <div id="scatter-surface">
+      </div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-in-btn" title="Zoom in">+</button>
+        <div class="zoom-level" id="zoom-level-display">100%</div>
+        <button class="zoom-btn" id="zoom-out-btn" title="Zoom out">−</button>
+        <button class="zoom-btn" id="zoom-fit-btn" title="Fit to view" style="font-size:0.7rem;">⊞</button>
+      </div>
+
+
+    </div>
+
+    <div class="game-toolbar">
+      <div class="toolbar-section">
+        <img id="preview-img" title="Reference image" alt="Preview">
+        <div class="toolbar-divider"></div>
+        <div class="stat-block" id="stat-moves">
+          <span class="stat-label">Moves</span>
+          <span class="stat-value" id="move-counter">0</span>
+        </div>
+        <div class="stat-block" id="stat-time">
+          <span class="stat-label">Time</span>
+          <span class="stat-value" id="timer-display">00:00</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-label">Connected</span>
+          <span class="stat-value" id="progress-display">1 / 0</span>
+        </div>
+      </div>
+      <div class="toolbar-title">
+        <span class="toolbar-title-main">Jigsaw</span>
+        <span class="toolbar-title-sub">Classic Puzzle Experience</span>
+      </div>
+      <div class="toolbar-section">
+        <button class="btn-small" id="scatter-btn">Scatter</button>
+        <button class="btn-small" id="sort-btn">Sort into groups</button>
+        <div class="toolbar-divider"></div>
+        <button class="btn-small" id="new-btn">New Puzzle</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div id="setup-wrapper"
+    style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto;">
+
+    <div id="setup-panel">
+      <div>
+        <p class="field-label">Upload Image</p>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="img-input" accept="image/*">
+          <div class="upload-placeholder">
+            <div class="upload-icon">🖼</div>
+            <div>Click to upload an image</div>
+            <div style="font-size:0.68rem;margin-top:6px;color:#5a5040">JPG, PNG, WEBP supported</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="field-label">Piece Count</p>
+        <div class="piece-count-grid" id="piece-count-grid">
+          <button class="piece-count-btn" data-count="5">5</button>
+          <button class="piece-count-btn" data-count="25">25</button>
+          <button class="piece-count-btn" data-count="50">50</button>
+          <button class="piece-count-btn" data-count="100">100</button>
+          <button class="piece-count-btn" data-count="200">200</button>
+          <button class="piece-count-btn" data-count="300">300</button>
+          <button class="piece-count-btn" data-count="400">400</button>
+          <button class="piece-count-btn" data-count="500">500</button>
+          <button class="piece-count-btn" data-count="600">600</button>
+          <button class="piece-count-btn" data-count="700">700</button>
+          <button class="piece-count-btn" data-count="800">800</button>
+          <button class="piece-count-btn" data-count="900">900</button>
+          <button class="piece-count-btn" data-count="1000">1000</button>
+          <button class="piece-count-btn" data-count="1200">1200</button>
+          <button class="piece-count-btn" data-count="1600">1600</button>
+          <button class="piece-count-btn" data-count="2000">2000</button>
+          <button class="piece-count-btn" data-count="2500">2500</button>
+          <button class="piece-count-btn" data-count="3000">3000</button>
+        </div>
+      </div>
+      <div>
+        <p class="field-label">Mode</p>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Relaxation mode</span>
+            <small>Hides move count and timer</small>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="relaxation-toggle">
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <button class="btn-primary" id="start-btn" disabled>Start Puzzle</button>
+      </div>
+    </div>
+
+
+
+    <script>
+      // ─── State ────────────────────────────────────────────────────────────────────
+      let sourceImage = null;
+      let gridN = 10; // cols
+      let gridRows = 10; // rows
+      let targetPieceCount = 100;
+      const RENDER_BASE = 200; // canvas always drawn at this resolution for sharpness
+      let basePieceSize = 90;
+      let pieceSize = 90;
+      let tabSize = 0;
+      let pieces = [];
+      let tabGrid = [];
+      let moves = 0;
+      let startTime = null;
+      let timerInterval = null;
+      let totalPieces = 0;
+      let relaxationMode = true;
+      let surfaceW = 0, surfaceH = 0, scatterPad = 0;
+
+      // Piece groups (free-form connections on scatter surface)
+      let pieceGroups = {};
+      let nextGroupId = 1;
+
+      function pieceCol(id) { return id % gridN; }
+      function pieceRow(id) { return Math.floor(id / gridN); }
+
+      function createGroup(pieceId, x, y) {
+        const gid = nextGroupId++;
+        pieces[pieceId].gx = 0;
+        pieces[pieceId].gy = 0;
+        pieceGroups[gid] = { pieces: [pieceId], x, y };
+        pieces[pieceId].groupId = gid;
+        return gid;
+      }
+
+      function rebuildGroupEl(gid) {
+        const g = pieceGroups[gid];
+        if (!g) return;
+        const surface = document.getElementById('scatter-surface');
+        const oldEl = surface.querySelector(`.scatter-group[data-gid="${gid}"]`);
+        if (oldEl) oldEl.remove();
+
+        // Normalize: shift group origin to bounding box top-left
+        let minGx = Infinity, minGy = Infinity, maxGx = -Infinity, maxGy = -Infinity;
+        g.pieces.forEach(pid => {
+          minGx = Math.min(minGx, pieces[pid].gx);
+          minGy = Math.min(minGy, pieces[pid].gy);
+          maxGx = Math.max(maxGx, pieces[pid].gx);
+          maxGy = Math.max(maxGy, pieces[pid].gy);
+        });
+        if (minGx !== 0 || minGy !== 0) {
+          g.x += minGx; g.y += minGy;
+          g.pieces.forEach(pid => { pieces[pid].gx -= minGx; pieces[pid].gy -= minGy; });
+          maxGx -= minGx; maxGy -= minGy; minGx = 0; minGy = 0;
+        }
+
+        // For a single piece, just show the pre-rendered clipped canvas as before
+        if (g.pieces.length === 1) {
+          const pid = g.pieces[0];
+          const wrap = document.createElement('div');
+          wrap.className = 'scatter-group';
+          wrap.dataset.gid = gid;
+          wrap.style.cssText = `position:absolute;left:${g.x}px;top:${g.y}px;` +
+            `width:${pieceSize}px;height:${pieceSize}px;cursor:grab;z-index:5;`;
+          const cv = copyCanvas(pieces[pid].canvasEl);
+          cv.style.cssText = `display:block;position:absolute;left:${-tabSize}px;top:${-tabSize}px;` +
+            `width:${pieceSize}px;height:${pieceSize}px;image-rendering:auto;pointer-events:none;`;
+          wrap.appendChild(cv);
+          wrap.addEventListener('mousedown', e => onGroupMouseDown(e, gid));
+          surface.appendChild(wrap);
+          return;
+        }
+
+        // For multi-piece groups: render onto a single canvas so seams disappear.
+        // The canvas covers the bounding box + tabSize bleed on all sides.
+        const bleed = tabSize;
+        const canvasW = (maxGx + basePieceSize) + bleed * 2;
+        const canvasH = (maxGy + basePieceSize) + bleed * 2;
+
+        const groupCanvas = document.createElement('canvas');
+        // Render at high resolution (RENDER_BASE scale)
+        const scale = RENDER_BASE / basePieceSize;
+        groupCanvas.width = Math.round(canvasW * scale);
+        groupCanvas.height = Math.round(canvasH * scale);
+        const ctx = groupCanvas.getContext('2d');
+
+        // Build the combined clip path: union of all piece jigsaw shapes
+        ctx.save();
+        ctx.beginPath();
+        g.pieces.forEach(pid => {
+          const col = pid % gridN;
+          const row = Math.floor(pid / gridN);
+          const renderTabSize = Math.round(RENDER_BASE * 0.33);
+          // Each piece's jigsaw path offset by its gx/gy (converted to render scale)
+          const ox = Math.round(pieces[pid].gx * scale) + renderTabSize;
+          const oy = Math.round(pieces[pid].gy * scale) + renderTabSize;
+          // bleed offset in render coords
+          const bx = Math.round(bleed * scale);
+          const by = Math.round(bleed * scale);
+          jigsawPath(ctx, ox - renderTabSize + bx, oy - renderTabSize + by,
+            RENDER_BASE, RENDER_BASE, renderTabSize, tabGrid[pid]);
+        });
+        ctx.closePath();
+        ctx.clip();
+
+        // Draw the source image for each piece's region, seamlessly
+        const renderTabSize = Math.round(RENDER_BASE * 0.33);
+        const bx = Math.round(bleed * scale);
+        const by = Math.round(bleed * scale);
+        g.pieces.forEach(pid => {
+          const col = pid % gridN;
+          const row = Math.floor(pid / gridN);
+          const ox = Math.round(pieces[pid].gx * scale) + bx;
+          const oy = Math.round(pieces[pid].gy * scale) + by;
+          // Draw the full source image offset so only this piece's region lands in the right spot
+          const imgDrawW = gridN * RENDER_BASE;
+          const imgDrawH = gridRows * RENDER_BASE;
+          ctx.drawImage(sourceImage,
+            ox - col * RENDER_BASE,
+            oy - row * RENDER_BASE,
+            imgDrawW, imgDrawH
+          );
+        });
+        ctx.restore();
+
+        const wrap = document.createElement('div');
+        wrap.className = 'scatter-group';
+        wrap.dataset.gid = gid;
+        wrap.style.cssText = `position:absolute;left:${g.x - bleed}px;top:${g.y - bleed}px;` +
+          `width:${canvasW}px;height:${canvasH}px;cursor:grab;z-index:5;`;
+
+        groupCanvas.style.cssText = `display:block;width:${canvasW}px;height:${canvasH}px;` +
+          `image-rendering:auto;pointer-events:none;`;
+        wrap.appendChild(groupCanvas);
+        wrap.addEventListener('mousedown', e => onGroupMouseDown(e, gid));
+        surface.appendChild(wrap);
+      }
+
+      function flashSnap(gid) {
+        const el = document.querySelector(`.scatter-group[data-gid="${gid}"]`);
+        if (!el) return;
+        el.style.transition = 'filter 0.25s';
+        el.style.filter = 'brightness(1.4) drop-shadow(0 0 8px rgba(201,168,76,0.9))';
+        setTimeout(() => { el.style.filter = ''; el.style.transition = ''; }, 280);
+      }
+
+      function trySnap(movedGroupId) {
+        const snap = basePieceSize * 0.18;
+        const mg = pieceGroups[movedGroupId];
+
+        for (const pid of mg.pieces) {
+          const mc = pieceCol(pid);
+          const mr = pieceRow(pid);
+          const mx = mg.x + pieces[pid].gx;
+          const my = mg.y + pieces[pid].gy;
+
+          const neighbours = [
+            { dc: 1, dr: 0, nid: mr * gridN + mc + 1, ex: mx + basePieceSize, ey: my },
+            { dc: -1, dr: 0, nid: mr * gridN + mc - 1, ex: mx - basePieceSize, ey: my },
+            { dc: 0, dr: 1, nid: (mr + 1) * gridN + mc, ex: mx, ey: my + basePieceSize },
+            { dc: 0, dr: -1, nid: (mr - 1) * gridN + mc, ex: mx, ey: my - basePieceSize },
+          ];
+
+          for (const { dc, dr, nid, ex, ey } of neighbours) {
+            const nc = mc + dc, nr = mr + dr;
+            if (nc < 0 || nc >= gridN || nr < 0 || nr >= gridRows) continue;
+            if (nid < 0 || nid >= totalPieces) continue;
+            const neighbour = pieces[nid];
+            if (neighbour.groupId == null) continue;
+            if (neighbour.groupId === movedGroupId) continue;
+
+            const ng = pieceGroups[neighbour.groupId];
+            const nx = ng.x + neighbour.gx;
+            const ny = ng.y + neighbour.gy;
+
+            if (Math.abs(nx - ex) < snap && Math.abs(ny - ey) < snap) {
+              // Snap: shift moved group so pieces align exactly
+              mg.x += (nx - ex);
+              mg.y += (ny - ey);
+
+              // Merge neighbour group INTO moved group
+              const ngid = neighbour.groupId;
+              const ng2 = pieceGroups[ngid];
+              // Offset = neighbour group origin relative to moved group origin
+              const offX = ng2.x - mg.x;
+              const offY = ng2.y - mg.y;
+
+              ng2.pieces.forEach(p => {
+                pieces[p].groupId = movedGroupId;
+                pieces[p].gx = (pieces[p].gx || 0) + offX;
+                pieces[p].gy = (pieces[p].gy || 0) + offY;
+                mg.pieces.push(p);
+              });
+              delete pieceGroups[ngid];
+
+              // Remove neighbour group DOM element
+              const surface = document.getElementById('scatter-surface');
+              const oldEl = surface.querySelector(`.scatter-group[data-gid="${ngid}"]`);
+              if (oldEl) oldEl.remove();
+
+              rebuildGroupEl(movedGroupId);
+              flashSnap(movedGroupId);
+              updateProgressDisplay();
+              trySnap(movedGroupId); // recursive: check if new group connects to others
+              checkWin();
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      // Pan & zoom state
+      let viewScale = 1;
+      let viewX = 0;
+      let viewY = 0;
+      let isPanning = false;
+      let panStartX = 0;
+      let panStartY = 0;
+      let panOriginX = 0;
+      let panOriginY = 0;
+      let viewportW = 0;
+      let viewportH = 0;
+
+      // ─── Setup ────────────────────────────────────────────────────────────────────
+      const imgInput = document.getElementById('img-input');
+      const uploadZone = document.getElementById('upload-zone');
+      const startBtn = document.getElementById('start-btn');
+
+      document.getElementById('game-panel').style.display = 'none';
+
+      // Piece count selector
+      document.getElementById('piece-count-grid').addEventListener('click', e => {
+        const btn = e.target.closest('.piece-count-btn');
+        if (!btn) return;
+        document.querySelectorAll('.piece-count-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        targetPieceCount = parseInt(btn.dataset.count);
+      });
+
+      function computeGrid(targetCount, imgWidth, imgHeight) {
+        // Find cols x rows closest to targetCount that respects image aspect ratio
+        const aspect = imgWidth / imgHeight;
+        // cols / rows ≈ aspect, cols * rows ≈ targetCount
+        // cols ≈ sqrt(targetCount * aspect), rows ≈ sqrt(targetCount / aspect)
+        let cols = Math.round(Math.sqrt(targetCount * aspect));
+        let rows = Math.round(Math.sqrt(targetCount / aspect));
+        // Clamp to reasonable range
+        cols = Math.max(2, cols);
+        rows = Math.max(2, rows);
+        return { cols, rows };
+      }
+
+      function handleImageUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = new Image();
+          img.onload = () => {
+            sourceImage = img;
+            uploadZone.classList.add('has-image');
+            const placeholder = uploadZone.querySelector('.upload-placeholder');
+            if (placeholder) placeholder.remove();
+            const oldPreview = uploadZone.querySelector('img');
+            if (oldPreview) oldPreview.remove();
+            const preview = document.createElement('img');
+            preview.src = ev.target.result;
+            preview.alt = 'Preview';
+            uploadZone.appendChild(preview);
+            startBtn.disabled = false;
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+      imgInput.addEventListener('change', handleImageUpload);
+      startBtn.addEventListener('click', initGame);
+      document.getElementById('scatter-btn').addEventListener('click', rescatterUnplaced);
+      document.getElementById('sort-btn').addEventListener('click', sortByColour);
+      document.getElementById('new-btn').addEventListener('click', resetToSetup);
+      document.getElementById('win-new-btn').addEventListener('click', resetToSetup);
+
+      // ─── Canvas copy helper (cloneNode does NOT copy pixel data) ─────────────────
+      function copyCanvas(src) {
+        const dst = document.createElement('canvas');
+        dst.width = src.width;
+        dst.height = src.height;
+        dst.getContext('2d').drawImage(src, 0, 0);
+        return dst;
+      }
+
+      // ─── Init ─────────────────────────────────────────────────────────────────────
+      function initGame() {
+        try {
+          document.getElementById('setup-wrapper').style.display = 'none';
+          document.getElementById('game-panel').style.display = 'flex';
+          document.getElementById('preview-img').src = sourceImage.src;
+
+          // Compute grid dimensions from target piece count and image aspect ratio
+          const grid = computeGrid(targetPieceCount, sourceImage.naturalWidth || sourceImage.width, sourceImage.naturalHeight || sourceImage.height);
+          gridN = grid.cols;
+          gridRows = grid.rows;
+
+          const vw = window.innerWidth;
+          const vh = window.innerHeight - 56; // minus toolbar
+          // Display size: fit board into ~50% of the smaller viewport dimension
+          basePieceSize = Math.max(8, Math.floor((Math.min(vw, vh) * 0.5) / Math.max(gridN, gridRows)));
+          tabSize = Math.round(basePieceSize * 0.33);
+          pieceSize = basePieceSize + tabSize * 2; // display size including tab bleed
+
+          // Render size: canvases are always drawn at high resolution for sharpness
+          const renderTabSize = Math.round(RENDER_BASE * 0.33);
+          const renderPieceSize = RENDER_BASE + renderTabSize * 2;
+
+          const boardPxW = basePieceSize * gridN;
+          const boardPxH = basePieceSize * gridRows;
+          scatterPad = Math.max(pieceSize * 1.5, 100);
+          surfaceW = boardPxW + scatterPad * 2;
+          surfaceH = boardPxH + scatterPad * 2;
+
+          const surface = document.getElementById('scatter-surface');
+          surface.style.width = surfaceW + 'px';
+          surface.style.height = surfaceH + 'px';
+
+          // Viewport fills entire window minus toolbar (56px)
+          const toolbarH = 56;
+          viewportW = window.innerWidth;
+          viewportH = window.innerHeight - toolbarH;
+          // Size is set via CSS flex; store dimensions for internal calculations
+          const viewport = document.getElementById('scatter-viewport');
+
+          // Fit view so the whole surface is visible initially
+          fitView();
+
+          totalPieces = gridN * gridRows;
+          moves = 0;
+          pieceGroups = {}; nextGroupId = 1;
+          pieces = [];
+          relaxationMode = document.getElementById('relaxation-toggle').checked;
+
+          // Show/hide stats based on mode
+          document.getElementById('stat-moves').style.display = relaxationMode ? 'none' : '';
+          document.getElementById('stat-time').style.display = relaxationMode ? 'none' : '';
+          document.getElementById('progress-display').textContent = `1 / ${totalPieces}`;
+
+          document.getElementById('move-counter').textContent = '0';
+
+          tabGrid = generateTabGrid(gridN, gridRows);
+          for (let i = 0; i < totalPieces; i++) {
+            const canvas = document.createElement('canvas');
+            canvas.width = renderPieceSize;
+            canvas.height = renderPieceSize;
+            drawPiece(canvas, Math.floor(i / gridN), i % gridN, tabGrid[i], RENDER_BASE, renderTabSize);
+            pieces.push({ id: i, canvasEl: canvas, groupId: null, gx: 0, gy: 0 });
+          }
+
+          scatterAllPieces();
+          initViewportEvents();
+          if (!relaxationMode) startTimer();
+        } catch (err) {
+          console.error('initGame error:', err);
+          alert('Error: ' + err.message + '\n' + err.stack);
+        }
+      }
+
+      // ─── Tab generation ───────────────────────────────────────────────────────────
+      function generateTabGrid(cols, rows) {
+        const tabs = Array.from({ length: cols * rows }, () => ({ top: 0, right: 0, bottom: 0, left: 0 }));
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols - 1; c++) {
+            const d = Math.random() < 0.5 ? 1 : -1;
+            tabs[r * cols + c].right = d;
+            tabs[r * cols + c + 1].left = -d;
+          }
+        }
+        for (let r = 0; r < rows - 1; r++) {
+          for (let c = 0; c < cols; c++) {
+            const d = Math.random() < 0.5 ? 1 : -1;
+            tabs[r * cols + c].bottom = d;
+            tabs[(r + 1) * cols + c].top = -d;
+          }
+        }
+        return tabs;
+      }
+
+      // ─── Draw piece ───────────────────────────────────────────────────────────────
+      function drawPiece(canvas, row, col, tabDirs, b, t) {
+        b = b || basePieceSize;
+        t = t || tabSize;
+        const ctx = canvas.getContext('2d');
+        const ox = t, oy = t;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.beginPath();
+        jigsawPath(ctx, ox, oy, b, b, t, tabDirs);
+        ctx.closePath();
+        ctx.clip();
+
+        // Draw image scaled exactly to the board (cols * base wide, rows * base tall)
+        const imgDrawW = gridN * b;
+        const imgDrawH = gridRows * b;
+        ctx.drawImage(sourceImage, ox - t - col * b, oy - t - row * b, imgDrawW + t * 2, imgDrawH + t * 2);
+        ctx.restore();
+
+        ctx.save();
+        ctx.beginPath(); jigsawPath(ctx, ox, oy, b, b, t, tabDirs); ctx.closePath();
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.beginPath(); jigsawPath(ctx, ox + 1, oy + 1, b - 2, b - 2, t, tabDirs); ctx.closePath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw a single puzzle tab along an edge.
+      // Uses ctx.arc() for a perfect circle — no flat-edge artefacts.
+      function drawTab(ctx, ax, ay, bx, by, dir) {
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        const edgeLen = Math.hypot(bx - ax, by - ay);
+        const ex = (bx - ax) / edgeLen; // unit along edge
+        const ey = (by - ay) / edgeLen;
+        const nx = ey * dir;           // unit normal pointing outward (dir-aware)
+        const ny = -ex * dir;
+
+        // Shape proportions
+        const knobR = edgeLen * 0.13;   // circle radius — compact, matches reference
+        const neckW = edgeLen * 0.13;   // half-width of neck at the edge surface
+        const rise = edgeLen * 0.04;   // how far above the edge the neck starts
+
+        // Knob centre: sits one radius out from the edge surface, plus a tiny rise
+        const kcx = mx + nx * (knobR + rise);
+        const kcy = my + ny * (knobR + rise);
+
+        // Neck points on the edge
+        const e1x = mx - neckW * ex, e1y = my - neckW * ey;
+        const e2x = mx + neckW * ex, e2y = my + neckW * ey;
+
+        // Angle from knob centre back to each neck point (for arc start/end)
+        const ang1 = Math.atan2(e1y - kcy, e1x - kcx);
+        const ang2 = Math.atan2(e2y - kcy, e2x - kcx);
+
+        // Walk to neck entry
+        ctx.lineTo(e1x, e1y);
+
+        // Arc: sweep the MAJOR arc (long way around) so the full circle shows.
+        // For a tab (dir>0) the neck points are at the bottom of the knob,
+        // so we go anticlockwise from ang1 to ang2 to sweep over the top.
+        // For a blank (dir<0) the neck points are at the top, so clockwise.
+        const anticlockwise = dir < 0;
+        ctx.arc(kcx, kcy, knobR, ang1, ang2, anticlockwise);
+
+        // Walk back to edge
+        ctx.lineTo(e2x, e2y);
+      }
+
+      function jigsawPath(ctx, x, y, w, h, t, { top, right, bottom, left }) {
+        const cx = x + w / 2, cy = y + h / 2;
+        ctx.moveTo(x, y);
+
+        // Top edge (left → right)
+        if (top !== 0) {
+          drawTab(ctx, x, y, x + w, y, top);
+        }
+        ctx.lineTo(x + w, y);
+
+        // Right edge (top → bottom)
+        if (right !== 0) {
+          drawTab(ctx, x + w, y, x + w, y + h, right);
+        }
+        ctx.lineTo(x + w, y + h);
+
+        // Bottom edge (right → left)
+        if (bottom !== 0) {
+          drawTab(ctx, x + w, y + h, x, y + h, bottom);
+        }
+        ctx.lineTo(x, y + h);
+
+        // Left edge (bottom → top)
+        if (left !== 0) {
+          drawTab(ctx, x, y + h, x, y, left);
+        }
+        ctx.lineTo(x, y);
+      }
+
+      // ─── Scatter ──────────────────────────────────────────────────────────────────
+      function scatterAllPieces() {
+        const surface = document.getElementById('scatter-surface');
+        surface.querySelectorAll('.scatter-group, .scatter-piece, .pile-label').forEach(el => el.remove());
+        pieceGroups = {}; nextGroupId = 1;
+        pieces.forEach(p => { p.groupId = null; p.gx = 0; p.gy = 0; });
+
+        const shuffled = pieces.map(p => p.id).sort(() => Math.random() - 0.5);
+        const positions = buildScatterPositions(shuffled.length);
+
+        shuffled.forEach((pieceId, idx) => {
+          const pos = positions[idx];
+          spawnScatterEl(pieceId, pos.x, pos.y, pos.rot);
+        });
+      }
+
+      function rescatterUnplaced() {
+        const surface = document.getElementById('scatter-surface');
+        surface.querySelectorAll('.scatter-group, .scatter-piece, .pile-label').forEach(el => el.remove());
+        pieceGroups = {}; nextGroupId = 1;
+        const unplaced = pieces.filter(p => !p.groupId || !pieceGroups[p.groupId] || pieceGroups[p.groupId].pieces.length === 1);
+        const positions = buildScatterPositions(unplaced.length);
+        unplaced.forEach((piece, idx) => {
+          const pos = positions[idx];
+          spawnScatterEl(piece.id, pos.x, pos.y, pos.rot);
+        });
+      }
+
+      // ─── Colour Sort ─────────────────────────────────────────────────────────────
+
+      // Sample the dominant hue of a piece canvas by averaging pixel HSL values
+      function getPieceHue(canvas) {
+        const sampleCanvas = document.createElement('canvas');
+        const size = 16; // small sample for speed
+        sampleCanvas.width = size;
+        sampleCanvas.height = size;
+        const ctx = sampleCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+
+        let rSum = 0, gSum = 0, bSum = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3];
+          if (a < 128) continue; // skip transparent (tab areas)
+          rSum += data[i];
+          gSum += data[i + 1];
+          bSum += data[i + 2];
+          count++;
+        }
+        if (count === 0) return 0;
+        const r = rSum / count / 255;
+        const g = gSum / count / 255;
+        const b = bSum / count / 255;
+
+        // RGB → HSL hue
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const d = max - min;
+        if (d === 0) return -1; // achromatic (grey/white/black) → bucket separately
+
+        let h;
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h = (h * 60 + 360) % 360;
+
+        // Also compute lightness to separate very dark/light pieces
+        const l = (max + min) / 2;
+        if (l < 0.12) return -2; // very dark → dark bucket
+        if (l > 0.88) return -3; // very light → light bucket
+        return h;
+      }
+
+      function sortByColour() {
+        const surface = document.getElementById('scatter-surface');
+
+        const unplaced = pieces.filter(p => !p.groupId || !pieceGroups[p.groupId] || pieceGroups[p.groupId].pieces.length === 1);
+        if (unplaced.length === 0) return;
+
+        unplaced.forEach(p => {
+          if (p.groupId != null) {
+            const g = pieceGroups[p.groupId];
+            if (g) {
+              g.pieces = g.pieces.filter(x => x !== p.id);
+              if (g.pieces.length === 0) {
+                const el = surface.querySelector(`.scatter-group[data-gid="${p.groupId}"]`);
+                if (el) el.remove();
+                delete pieceGroups[p.groupId];
+              }
+            }
+            p.groupId = null;
+          }
+        });
+        surface.querySelectorAll('.scatter-group, .scatter-piece, .pile-label').forEach(el => el.remove());
+        pieceGroups = {}; nextGroupId = 1;
+
+        // ── Colour bucketing ──────────────────────────────────────────────────────
+        const bucketDefs = [
+          { label: 'Red', check: h => h >= 345 || h < 15 },
+          { label: 'Orange', check: h => h >= 15 && h < 45 },
+          { label: 'Yellow', check: h => h >= 45 && h < 75 },
+          { label: 'Green', check: h => h >= 75 && h < 165 },
+          { label: 'Cyan', check: h => h >= 165 && h < 195 },
+          { label: 'Blue', check: h => h >= 195 && h < 255 },
+          { label: 'Purple', check: h => h >= 255 && h < 315 },
+          { label: 'Pink', check: h => h >= 315 && h < 345 },
+          { label: 'Dark', check: h => h === -2 },
+          { label: 'Light', check: h => h === -3 },
+          { label: 'Grey', check: h => h === -1 },
+        ];
+
+        const groups = {};
+        unplaced.forEach(p => {
+          const hue = getPieceHue(p.canvasEl);
+          const bucket = bucketDefs.find(b => b.check(hue));
+          const key = bucket ? bucket.label : 'Grey';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(p);
+        });
+
+        // Shuffle pieces within each group so sorted order isn't revealed
+        Object.keys(groups).forEach(k => {
+          for (let i = groups[k].length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [groups[k][i], groups[k][j]] = [groups[k][j], groups[k][i]];
+          }
+        });
+
+        // Sort groups by size descending, then number them
+        const groupKeys = Object.keys(groups)
+          .sort((a, b) => groups[b].length - groups[a].length);
+        if (groupKeys.length === 0) return;
+
+        // Map each key to a display label: "Group 1", "Group 2", etc.
+        const groupLabel = {};
+        groupKeys.forEach((key, i) => { groupLabel[key] = `Group ${i + 1}`; });
+
+        // ── Board exact bounds (board is CSS-centered at 50%/50% of surface) ──────
+        // No fixed board — treat the centre 50% of the surface as the "keep clear" zone for sorting
+        const boardW = surfaceW * 0.5;
+        const boardH = surfaceH * 0.5;
+        const boardLeft = (surfaceW - boardW) / 2;
+        const boardTop = (surfaceH - boardH) / 2;
+        const boardRight = boardLeft + boardW;
+        const boardBottom = boardTop + boardH;
+
+        const ps = pieceSize + 4;  // stride: no overlap
+        const pad = 10;
+        const labelH = 22;
+        const groupGap = 14;
+
+        // ── Define the 4 strict rectangular zones ────────────────────────────────
+        // top:    full-width strip above board
+        // bottom: full-width strip below board  
+        // left:   strip left of board, board height only
+        // right:  strip right of board, board height only
+        const zones = {
+          top: { x: 0, y: 0, w: surfaceW, h: boardTop },
+          bottom: { x: 0, y: boardBottom, w: surfaceW, h: surfaceH - boardBottom },
+          left: { x: 0, y: boardTop, w: boardLeft, h: boardH },
+          right: { x: boardRight, y: boardTop, w: surfaceW - boardRight, h: boardH },
+        };
+
+        // How many piece-columns fit in each zone width
+        function zoneCols(zone) {
+          return Math.max(1, Math.floor((zone.w - pad * 2) / ps));
+        }
+
+        // Height one group consumes in a zone (label + rows of pieces + gap)
+        function groupH(count, cols) {
+          return labelH + Math.ceil(count / cols) * ps + groupGap;
+        }
+
+        // Total height all groups assigned to a zone need
+        function totalH(keys, cols) {
+          return keys.reduce((acc, k) => acc + groupH(groups[k].length, cols), 0);
+        }
+
+        // ── Assign groups to zones ────────────────────────────────────────────────
+        // Priority: bottom → top → right → left (most space usually at bottom/top)
+        const zoneOrder = ['bottom', 'top', 'right', 'left'];
+        const assigned = { top: [], bottom: [], left: [], right: [] };
+
+        // Greedily fill each zone in order until it's full, then spill to next
+        const zoneFill = { top: 0, bottom: 0, left: 0, right: 0 };
+        groupKeys.forEach(key => {
+          for (const zname of zoneOrder) {
+            const zone = zones[zname];
+            const cols = zoneCols(zone);
+            const needed = groupH(groups[key].length, cols);
+            const available = zone.h - pad * 2;
+            if (zoneFill[zname] + needed <= available) {
+              assigned[zname].push(key);
+              zoneFill[zname] += needed;
+              return;
+            }
+          }
+          // If no zone has room, force into bottom anyway
+          assigned['bottom'].push(key);
+        });
+
+        // ── Place pieces in each zone ─────────────────────────────────────────────
+        function placeInZone(zname) {
+          const zone = zones[zname];
+          const cols = zoneCols(zone);
+          let curY = zone.y + pad;
+
+          assigned[zname].forEach(key => {
+            const group = groups[key];
+
+            // Label centred over the group
+            const labelEl = document.createElement('div');
+            labelEl.className = 'pile-label';
+            labelEl.textContent = groupLabel[key];
+            labelEl.style.cssText = `left:${zone.x + zone.w / 2}px;top:${curY}px;`;
+            surface.appendChild(labelEl);
+            curY += labelH;
+
+            // Pieces in clean rows, left-aligned within zone
+            const startX = zone.x + pad;
+            group.forEach((piece, pi) => {
+              const col = pi % cols;
+              const row = Math.floor(pi / cols);
+              const x = startX + col * ps;
+              const y = curY + row * ps;
+              spawnScatterEl(piece.id, x, y, 0);
+            });
+
+            curY += Math.ceil(group.length / cols) * ps + groupGap;
+          });
+        }
+
+        zoneOrder.forEach(placeInZone);
+        fitView();
+      }
+
+      function buildScatterPositions(count) {
+        const ps = pieceSize;
+        const margin = 10;
+        const boardLeft = surfaceW / 4; // no fixed board; keep pieces near edges
+        const boardTop = surfaceH / 4;
+        const boardRight = surfaceW * 3 / 4;
+        const boardBottom = surfaceH * 3 / 4;
+
+        const placed = [];
+        const maxAttempts = 120;
+
+        function overlaps(x, y) {
+          if (x + ps > boardLeft && x < boardRight && y + ps > boardTop && y < boardBottom) return true;
+          for (const p of placed) {
+            if (Math.abs(p.x - x) < ps * 0.72 && Math.abs(p.y - y) < ps * 0.72) return true;
+          }
+          return false;
+        }
+
+        for (let i = 0; i < count; i++) {
+          let found = false;
+          for (let a = 0; a < maxAttempts; a++) {
+            const x = margin + Math.random() * (surfaceW - ps - margin * 2);
+            const y = margin + Math.random() * (surfaceH - ps - margin * 2);
+            if (!overlaps(x, y)) {
+              placed.push({ x, y, rot: (Math.random() - 0.5) * 46 });
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // Fallback: place anywhere in a corner
+            const corner = Math.floor(Math.random() * 4);
+            const cx = corner % 2 === 0 ? margin + Math.random() * (scatterPad - ps - margin) : surfaceW - scatterPad + Math.random() * (scatterPad - ps - margin);
+            const cy = corner < 2 ? margin + Math.random() * (scatterPad - ps - margin) : surfaceH - scatterPad + Math.random() * (scatterPad - ps - margin);
+            placed.push({ x: Math.max(margin, cx), y: Math.max(margin, cy), rot: (Math.random() - 0.5) * 46 });
+          }
+        }
+        return placed;
+      }
+
+      function spawnScatterElReturn(pieceId, x, y) {
+        // Thin wrapper — create a single-piece group
+        spawnScatterEl(pieceId, x, y, 0);
+        const gid = pieces[pieceId].groupId;
+        return document.querySelector(`.scatter-group[data-gid="${gid}"]`);
+      }
+
+      function spawnScatterEl(pieceId, x, y, rot) {
+        const piece = pieces[pieceId];
+        // Remove from any existing group
+        if (piece.groupId != null) {
+          const oldG = pieceGroups[piece.groupId];
+          if (oldG) {
+            oldG.pieces = oldG.pieces.filter(p => p !== pieceId);
+            if (oldG.pieces.length === 0) {
+              delete pieceGroups[piece.groupId];
+              const surface = document.getElementById('scatter-surface');
+              const oldEl = surface.querySelector(`.scatter-group[data-gid="${piece.groupId}"]`);
+              if (oldEl) oldEl.remove();
+            } else {
+              // Rebuild the group without this piece
+              rebuildGroupEl(piece.groupId);
+            }
+          }
+          piece.groupId = null;
+        }
+        piece.gx = 0;
+        piece.gy = 0;
+        // Create a new single-piece group
+        createGroup(pieceId, x, y);
+        rebuildGroupEl(pieces[pieceId].groupId);
+      }
+
+      // ─── Drag State ──────────────────────────────────────────────────────────────
+      let dragPieceId = null;       // piece being dragged from scatter
+      let dragGroupId = null;       // group being dragged
+      let dragEl = null;            // the DOM element following cursor
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      // ─── Interaction ──────────────────────────────────────────────────────────────
+
+      // Scatter piece: mousedown starts drag
+      function onScatterMouseDown(e, pieceId) {
+        e.preventDefault();
+        e.stopPropagation();
+        const piece = pieces[pieceId];
+        if (piece.groupId == null) return;
+        onGroupMouseDown(e, piece.groupId, pieceId);
+      }
+
+      function onGroupMouseDown(e, gid, triggeredByPieceId) {
+        e.preventDefault();
+        e.stopPropagation();
+        const g = pieceGroups[gid];
+        if (!g) return;
+
+        const el = document.querySelector(`.scatter-group[data-gid="${gid}"]`);
+        if (!el) return;
+
+        const rect = el.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        dragPieceId = triggeredByPieceId || g.pieces[0];
+        dragGroupId = gid;
+        dragEl = el;
+        el.style.cursor = 'grabbing';
+        el.style.zIndex = '50';
+
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('mouseup', onDragEnd);
+      }
+
+
+      function onDragMove(e) {
+        if (!dragEl) return;
+
+        const viewport = document.getElementById('scatter-viewport');
+        const rect = viewport.getBoundingClientRect();
+
+        // Convert viewport mouse pos to surface coords
+        const surfacePos = viewportToSurface(e.clientX - rect.left, e.clientY - rect.top);
+        const x = surfacePos.x - dragOffsetX / viewScale;
+        const y = surfacePos.y - dragOffsetY / viewScale;
+
+        dragEl.style.left = x + 'px';
+        dragEl.style.top = y + 'px';
+        // Keep group state in sync (account for bleed offset in multi-piece groups)
+        if (dragGroupId != null && pieceGroups[dragGroupId]) {
+          const grp = pieceGroups[dragGroupId];
+          const isMulti = grp.pieces.length > 1;
+          grp.x = isMulti ? x + tabSize : x;
+          grp.y = isMulti ? y + tabSize : y;
+        }
+
+      }
+
+      function onDragEnd(e) {
+        document.removeEventListener('mousemove', onDragMove);
+        document.removeEventListener('mouseup', onDragEnd);
+        if (!dragEl) return;
+
+        const x = parseFloat(dragEl.style.left);
+        const y = parseFloat(dragEl.style.top);
+
+        // Reset cursor/z-index
+        dragEl.style.cursor = 'grab';
+        dragEl.style.zIndex = '5';
+
+        // Sync group position from DOM
+        if (dragGroupId != null && pieceGroups[dragGroupId]) {
+          const grp = pieceGroups[dragGroupId];
+          const isMulti = grp.pieces.length > 1;
+          grp.x = isMulti ? x + tabSize : x;
+          grp.y = isMulti ? y + tabSize : y;
+          // Try snapping to neighbours
+          trySnap(dragGroupId);
+        }
+
+        dragPieceId = null;
+        dragGroupId = null;
+        dragEl = null;
+      }
+
+
+
+
+
+
+
+      function updateProgressDisplay() {
+        // Show: largest group size / total pieces
+        let maxGroup = 1;
+        Object.values(pieceGroups).forEach(g => { if (g.pieces.length > maxGroup) maxGroup = g.pieces.length; });
+        document.getElementById('progress-display').textContent = `${maxGroup} / ${totalPieces}`;
+      }
+
+      // ─── Win ──────────────────────────────────────────────────────────────────────
+      function checkWin() {
+        // Win when a single group contains all unplaced pieces (i.e. all pieces connected)
+        const allConnected = Object.values(pieceGroups).some(g => g.pieces.length === totalPieces);
+        if (!allConnected) return;
+        clearInterval(timerInterval);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const secs = String(elapsed % 60).padStart(2, '0');
+        const cl = '</' + 'span>';
+        const cdl = '</' + 'div>';
+        // document.getElementById('win-stats').innerHTML =
+        //   '<div class="win-stat"><span class="win-stat-label">Time' + cl +
+        //   '<span class="win-stat-value">' + mins + ':' + secs + cl + cdl +
+        //   '<div class="win-stat"><span class="win-stat-label">Moves' + cl +
+        //   '<span class="win-stat-value">' + moves + cl + cdl +
+        //   '<div class="win-stat"><span class="win-stat-label">Pieces' + cl +
+        //   '<span class="win-stat-value">' + totalPieces + cl + cdl;
+        document.getElementById('win-overlay').classList.add('show');
+        launchConfetti();
+      }
+
+      function launchConfetti() {
+        const colors = ['#c9a84c', '#e8c97a', '#ffffff', '#6aaa6a', '#4a90d9', '#e05a5a'];
+        for (let i = 0; i < 90; i++) {
+          const el = document.createElement('div');
+          el.className = 'confetti-piece';
+          el.style.left = Math.random() * 100 + 'vw';
+          el.style.background = colors[Math.floor(Math.random() * colors.length)];
+          el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+          el.style.animationDelay = (Math.random() * 0.8) + 's';
+          el.style.width = (6 + Math.random() * 8) + 'px';
+          el.style.height = (6 + Math.random() * 8) + 'px';
+          document.body.appendChild(el);
+          el.addEventListener('animationend', () => el.remove());
+        }
+      }
+
+      // ─── Timer ────────────────────────────────────────────────────────────────────
+      function startTimer() {
+        startTime = Date.now();
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+          const s = Math.floor((Date.now() - startTime) / 1000);
+          document.getElementById('timer-display').textContent =
+            `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+        }, 1000);
+      }
+
+      // ─── Resize ───────────────────────────────────────────────────────────────────
+      window.addEventListener('resize', () => {
+        if (document.getElementById('game-panel').style.display === 'none') return;
+        viewportW = window.innerWidth;
+        viewportH = window.innerHeight - 56;
+        fitView();
+      });
+
+      // ─── Reset ────────────────────────────────────────────────────────────────────
+      function resetToSetup() {
+        clearInterval(timerInterval);
+        document.getElementById('win-overlay').classList.remove('show');
+        document.getElementById('game-panel').style.display = 'none';
+        document.getElementById('setup-wrapper').style.display = 'flex';
+      }
+
+      // ─── Pan & Zoom ───────────────────────────────────────────────────────────────
+      function applyView() {
+        document.getElementById('scatter-surface').style.transform =
+          `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
+        document.getElementById('zoom-level-display').textContent =
+          Math.round(viewScale * 100) + '%';
+      }
+
+      function fitView() {
+        const scaleX = viewportW / surfaceW;
+        const scaleY = viewportH / surfaceH;
+        viewScale = Math.min(scaleX, scaleY, 1) * 0.92;
+        viewX = (viewportW - surfaceW * viewScale) / 2;
+        viewY = (viewportH - surfaceH * viewScale) / 2;
+        applyView();
+      }
+
+      function zoomAt(cx, cy, delta) {
+        const rect = document.getElementById('scatter-viewport').getBoundingClientRect();
+        const mouseX = cx - rect.left;
+        const mouseY = cy - rect.top;
+        const oldScale = viewScale;
+        viewScale = Math.min(4, Math.max(0.1, viewScale * delta));
+        // Zoom toward cursor
+        viewX = mouseX - (mouseX - viewX) * (viewScale / oldScale);
+        viewY = mouseY - (mouseY - viewY) * (viewScale / oldScale);
+        applyView();
+      }
+
+      // Convert viewport coords to surface coords (accounting for pan+zoom)
+      function viewportToSurface(vx, vy) {
+        return {
+          x: (vx - viewX) / viewScale,
+          y: (vy - viewY) / viewScale,
+        };
+      }
+
+      // Set up pan & zoom events on viewport
+      function initViewportEvents() {
+        const viewport = document.getElementById('scatter-viewport');
+
+        // Mouse wheel zoom
+        viewport.addEventListener('wheel', e => {
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 1.1 : 0.91;
+          zoomAt(e.clientX, e.clientY, delta);
+        }, { passive: false });
+
+        // Middle mouse or right-click to pan; also fall-through when no drag is happening
+        viewport.addEventListener('mousedown', e => {
+          // Only pan on middle click, or left click on the background (not on a piece)
+          if (e.button === 1 || (e.button === 0 && e.target === viewport) || (e.button === 0 && e.target === document.getElementById('scatter-surface'))) {
+            e.preventDefault();
+            isPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panOriginX = viewX;
+            panOriginY = viewY;
+            viewport.classList.add('panning');
+          }
+        });
+
+        document.addEventListener('mousemove', e => {
+          if (!isPanning) return;
+          viewX = panOriginX + (e.clientX - panStartX);
+          viewY = panOriginY + (e.clientY - panStartY);
+          applyView();
+        });
+
+        document.addEventListener('mouseup', e => {
+          if (isPanning) {
+            isPanning = false;
+            document.getElementById('scatter-viewport').classList.remove('panning');
+          }
+        });
+
+        // Zoom buttons
+        document.getElementById('zoom-in-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          const vp = document.getElementById('scatter-viewport').getBoundingClientRect();
+          zoomAt(vp.left + vp.width / 2, vp.top + vp.height / 2, 1.2);
+        });
+        document.getElementById('zoom-out-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          const vp = document.getElementById('scatter-viewport').getBoundingClientRect();
+          zoomAt(vp.left + vp.width / 2, vp.top + vp.height / 2, 0.83);
+        });
+        document.getElementById('zoom-fit-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          fitView();
+        });
+      }
+    </script>
+</body>
+
+</html>
